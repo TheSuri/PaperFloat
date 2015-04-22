@@ -1,5 +1,5 @@
-Given(/^the PaperFloat home page has loaded$/) do
-	visit 'http://localhost/PaperFloat/index.php'
+Given(/^the PaperFloat page has loaded$/) do
+	visit 'http://localhost/PaperFloat/'
 end
 
 Given(/^I have entered a valid author, Norihiro Yoshida, in the input box$/) do
@@ -8,10 +8,10 @@ Given(/^I have entered a valid author, Norihiro Yoshida, in the input box$/) do
 end
 
 Given(/^I choose Author$/) do
-	choose('Author')
+	choose('radio_author')
 end
 
-When(/^I press the 'Submit' button$/) do
+When(/^I press the Submit button$/) do
 	click_button('Submit')
 end
 
