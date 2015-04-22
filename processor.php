@@ -122,8 +122,17 @@ function parseIEEE($papers)
 
 		else
 		{
-			$text = parsePDF($string);
-			$text = preg_replace("/[^a-zA-Z0-9]+/", " ", $text);
+			// !!!! CATCH PARSE EXCEPTION HERE
+			try {
+				$text = parsePDF($string);
+				$text = preg_replace("/[^a-zA-Z0-9]+/", " ", $text);
+			}
+			catch (Exception $e) {
+				//echo "There was a problem reading a paper from IEEE. The file returned is invalid. Skipping...<br />";
+				$text = ' ';
+				displayError('There was a problem reading a paper from IEEE. The file returned is invalid. Skipping...');
+			}
+			//$text = preg_replace("/[^a-zA-Z0-9]+/", " ", $text);
 			$arrayOfPaperText[$i] = $text;
 			$papers[$i]->setText($text);
 		}
@@ -146,54 +155,6 @@ function parseIEEE($papers)
 	return $arrayOfPaperText;
 	
 }
-
-
-/*
-function parseIEEE($count)
-{		
-		$allPapers = array();
-		for ($i = 0; $i < $count; $i++)
-		{
-				$string = "Downloads/" . $i . "file.pdf";
-
-				//echo $string. "<br><br>";
-				if (filesize($string) <= 64886)
-				{	
-					$allPapers[$i] = ' ';
-					//continue;
-				}
-
-				// if ($i == 6)
-				// {
-				// 	continue;
-				// }
-
-				else
-				{
-					$text = parsePDF($string);
-					//echo $text . "<br><br>";
-					$allPapers[$i] = $text;
-				}
-
-				// update progress bar
-				$p = $_SESSION['progressbar'];
-
-				$totalProcesses = $_SESSION['totalProcesses'];
-
-				$processesDone = $_SESSION['processesDone'];
-				$processesDone++;
-				$_SESSION['processesDone'] = $processesDone;
-
-				$p->setProgressBarProgress(($processesDone*100)/$totalProcesses);
-		}
- 
-
-return $allPapers;
-	
-
-}
-
-*/
 
 function getFileIEEE($url, $i)
 {
@@ -240,188 +201,58 @@ function getFileIEEE($url, $i)
 
 }
 
+function searchIEEE($searchTerm, $searchParameter) {
 
-function searchIEEEKeyWord($keyword)
-{
-
-	$keyword = strtolower($keyword);
-	$keyword = preg_replace("/[\s_]/", "_", $keyword);
-	$query = "http://ieeexplore.ieee.org/gateway/ipsSearch.jsp?querytext=" . $keyword;
+	$searchTerm = strtolower($searchTerm);
+	$searchTerm = preg_replace("/[\s_]/", "_", $searchTerm);
+	if (strcmp($searchParameter, "author") == 0) {
+		$query = "http://ieeexplore.ieee.org/gateway/ipsSearch.jsp?au=" . $searchTerm;
+	}
+	else if (strcmp($searchParameter, "publication") == 0) {
+		$query = "http://ieeexplore.ieee.org/gateway/ipsSearch.jsp?jn=" . $searchTerm;
+	}
+	else {
+		// default to keyword
+		$query = "http://ieeexplore.ieee.org/gateway/ipsSearch.jsp?querytext=" . $searchTerm;
+	}
 	$xml = simplexml_load_file($query);
 	$count = count($xml->document);
 	$arrayOfLinks = array();
-	for ($i = 0; $i < $count; $i++)
-	{
+	for ($i = 0; $i < $count; $i++)	{
 		$arrayOfLinks[$i] = (string)$xml->document[$i]->mdurl;
 	}
-	//print_r($arrayOfLinks);
+
 	$limit = $_SESSION['limit'];
 	
 	$paperArray = array();
-	for ($i = 0; $i < $count; $i++)
-	{
+	for ($i = 0; $i < $count; $i++) {
 		if ($i < $limit) {
 			$html = file_get_contents_curl($arrayOfLinks[$i]);
 			$doc = new DOMDocument();
 			@$doc->loadHTML($html);
 			$metas = $doc->getElementsByTagName('meta');
 			$paper = new Paper();
-			for ($j = 0; $j < $metas->length; $j++)
-			{
+			for ($j = 0; $j < $metas->length; $j++) {
 				$meta = $metas->item($j);
 				$pdfLink = ' ';
-				
 
-				if ($meta->getAttribute('name') == "citation_conference")
-				{
+				if ($meta->getAttribute('name') == "citation_conference") {
 					$paper->setConference($meta->getAttribute('content'));
 				}
 
-				if ($meta->getAttribute('name') == "citation_author")
-				{
+				if ($meta->getAttribute('name') == "citation_author") {
 					$paper->setAuthor($meta->getAttribute('content'));
 				}
 
-				if ($meta->getAttribute('name') == "citation_title")
-				{
+				if ($meta->getAttribute('name') == "citation_title") {
 					$paper->setTitle($meta->getAttribute('content'));
 				}
 
-				if ($meta->getAttribute('name') == "citation_pdf_url")
-				{	
+				if ($meta->getAttribute('name') == "citation_pdf_url"){		
 					$pdfLink = $meta->getAttribute('content');
 					break;
 				}
 			}
-			
-
-			$firstPart = substr($pdfLink, 0, 30);
-
-			$secondPart = substr($pdfLink, 30, strlen($pdfLink));
-			$pdfLink = $firstPart . "x"  . $secondPart;
-
-			$paper->setLink($pdfLink);
-
-			getFileIEEE($pdfLink, $i);
-
-			$paperArray[] = $paper;
-		}
-	}
-
-	return $paperArray;
-}
-
-/*
-function searchIEEEKeyWord($keyword)
-{
-
-	$keyword = strtolower($keyword);
-	$keyword = preg_replace("/[\s_]/", "_", $keyword);
-	$query = "http://ieeexplore.ieee.org/gateway/ipsSearch.jsp?querytext=" . $keyword;
-	$xml = simplexml_load_file($query);
-	//print_r($xml);
-	$count = count($xml->document);
-	//echo $count . "<br>";
-
-	$arrayOfLinks = array();
-	for ($i = 0; $i < $count; $i++)
-	{
-		$arrayOfLinks[$i] = (string)$xml->document[$i]->mdurl;
-	}
-	//print_r($arrayOfLinks);
-
-	$limit = $_SESSION['limit'];
-	
-	for ($i = 0; $i < count($arrayOfLinks); $i++)
-	{
-		if ($i < $limit) {
-			$html = file_get_contents_curl($arrayOfLinks[$i]);
-			$doc = new DOMDocument();
-			@$doc->loadHTML($html);
-			$metas = $doc->getElementsByTagName('meta');
-
-			for ($j = 0; $j < $metas->length; $j++)
-			{
-				$meta = $metas->item($j);
-				$pdfLink = ' ';
-				if ($meta->getAttribute('name') == "citation_pdf_url")
-				{
-					$pdfLink = $meta->getAttribute('content');
-					break;
-				}
-			}
-
-			$firstPart = substr($pdfLink, 0, 30);
-			$secondPart = substr($pdfLink, 30, strlen($pdfLink));
-			$pdfLink = $firstPart . "x"  . $secondPart;
-
-			//echo $pdfLink . "<br>";
-			getFileIEEE($pdfLink, $i) . "<br> <br>";
-	
-		}
-
-	}
-
-	if ($i >= $limit) {
-		$i = $limit;
-	}
-
-	return $i;
-}
-*/
-
-function searchIEEEAuthor($author)
-{
-	$author = strtolower($author);
-	$author = preg_replace("/[\s_]/", "_", $author);
-	$query = "http://ieeexplore.ieee.org/gateway/ipsSearch.jsp?au=" . $author;
-	$xml = simplexml_load_file($query);
-	$count = count($xml->document);
-	$arrayOfLinks = array();
-	for ($i = 0; $i < $count; $i++)
-	{
-		$arrayOfLinks[$i] = (string)$xml->document[$i]->mdurl;
-	}
-	//print_r($arrayOfLinks);
-	$limit = $_SESSION['limit'];
-	
-	$paperArray = array();
-	for ($i = 0; $i < $count; $i++)
-	{
-		if ($i < $limit) {
-			$html = file_get_contents_curl($arrayOfLinks[$i]);
-			$doc = new DOMDocument();
-			@$doc->loadHTML($html);
-			$metas = $doc->getElementsByTagName('meta');
-			$paper = new Paper();
-			for ($j = 0; $j < $metas->length; $j++)
-			{
-				$meta = $metas->item($j);
-				$pdfLink = ' ';
-				
-
-				if ($meta->getAttribute('name') == "citation_conference")
-				{
-					$paper->setConference($meta->getAttribute('content'));
-				}
-
-				if ($meta->getAttribute('name') == "citation_author")
-				{
-					$paper->setAuthor($meta->getAttribute('content'));
-				}
-
-				if ($meta->getAttribute('name') == "citation_title")
-				{
-					$paper->setTitle($meta->getAttribute('content'));
-				}
-
-				if ($meta->getAttribute('name') == "citation_pdf_url")
-				{		
-					$pdfLink = $meta->getAttribute('content');
-					break;
-				}
-			}
-			
 
 			$firstPart = substr($pdfLink, 0, 30);
 
@@ -501,11 +332,26 @@ function getFileACM($url, $i)
 
 }
 
-function getACMBy($author)
-{
-	$author = strtolower($author);
-	$auhtor = preg_replace("/[\s_]/", "_", $author);
-	$query = "http://dl.acm.org/results.cfm?h=&query=" . $author;
+function searchACM($searchTerm, $searchParameter) {
+	$searchTerm = strtolower($searchTerm);
+	$searchTerm = preg_replace("/[\s_]/", "_", $searchTerm);
+	$searchTerm = preg_replace("/[^a-zA-Z0-9\-]+/", " ", $searchTerm);
+	if (strcmp($searchParameter, "author") == 0) {
+		$searchTerm = str_replace(' ', '+', $searchTerm);
+		$query = "http://dl.acm.org/results.cfm?adv=1&COLL=DL&DL=ACM&Go.x=0&Go.y=0&termzone=all&allofem=&anyofem=&noneofem=&peoplezone=Name&people=";
+		$query .= $searchTerm;
+		$query .= "&peoplehow=and&keyword=&keywordhow=AND&affil=&affilhow=AND&pubin=&pubinhow=and&pubby=&pubbyhow=OR&since_year=&before_year=&pubashow=OR&sponsor=&sponsorhow=AND&confdate=&confdatehow=OR&confloc=&conflochow=OR&isbnhow=OR&isbn=&doi=&ccs=&subj=";
+	}
+	else if (strcmp($searchParameter, "publication") == 0) {
+		$query = "http://dl.acm.org/results.cfm?adv=1&COLL=DL&DL=ACM&Go.x=0&Go.y=0&termzone=all&allofem=&anyofem=&noneofem=&peoplezone=Name&people=&peoplehow=and&keyword=&keywordhow=AND&affil=&affilhow=AND&pubin=";
+		$query .= $searchTerm;
+		$query .= "&pubinhow=and&pubby=&pubbyhow=OR&since_year=&before_year=&pubashow=OR&sponsor=&sponsorhow=AND&confdate=&confdatehow=OR&confloc=&conflochow=OR&isbnhow=OR&isbn=&doi=&ccs=&subj=";
+	}
+	else {
+		// default to keyword
+		$query = "http://dl.acm.org/results.cfm?h=&query=" . $searchTerm;
+	}
+	
 	$html = file_get_html($query);
 
 	$localauthors = array();
@@ -519,49 +365,43 @@ function getACMBy($author)
 	$papersAdded = 0;
 
 	// authors
-	foreach ($html->find('tr td div.authors') as $e)
-	{	
-
+	foreach ($html->find('tr td div.authors') as $e) {	
 		$localauthor = trim($e->plaintext);
-		$localauthors[] = $localauthor;
+		$paperAuthors = explode(',', $localauthor);
+		$paperAuthors = array_map('trim', $paperAuthors);
+		$localauthors[] = $paperAuthors;
 	}
 
-	foreach ($html->find('tr td a.medium-text') as $e)
-	{
+	foreach ($html->find('tr td a.medium-text') as $e) {
 		$titles[] = $e->plaintext;
 	}
 
-	$i = 0;
+	$i = 0; // counter to check if limit reached
 	
-	foreach($html->find('tr td tr td tr td a') as $e)
-	{	
+	foreach($html->find('tr td tr td tr td a') as $e) {	
 		$comparable = $e->plaintext;
 		$comparable = substr($comparable, 81, 84);
 
-		if ($comparable == "PDF" && $i < $limit)
-		{	
+		if ($comparable == "PDF" && $i < $limit) {	
 			$link = "http://dl.acm.org/" . $e->href;
 			$links[$i] = $link;
 			getFileACM($link, $i);
 			$i++;
-		}
-
-		
-		
+		}	
 	}
 
-	foreach($html->find('tr td div.addinfo') as $e)
-	{
+	foreach($html->find('tr td div.addinfo') as $e) {
 		$conferences[] = $e->plaintext;
 	}
 
-	for ($i = 0; $i < count($localauthors); $i++)
-	{		
+	for ($i = 0; $i < count($localauthors); $i++) {		
 
-		if (!empty($links[$i]))
-		{
+		if (!empty($links[$i])) {
 			$paper = new Paper();
-			$paper->setAuthor($localauthors[$i]);
+			foreach ($localauthors[$i] as $key => $value) {
+				$paper->setAuthor($value);
+			}
+			//$paper->setAuthor($localauthors[$i]);
 			$paper->setTitle($titles[$i]);
 			$paper->setConference($conferences[$i]);
 			$paper->setLink($links[$i]);
@@ -569,9 +409,11 @@ function getACMBy($author)
 		}
 	}
 
-return $paperArray;
+	return $paperArray;
 
 }
+
+
 
 function parseACM($paperArray)
 {
@@ -586,8 +428,16 @@ function parseACM($paperArray)
 
 		else
 		{
-			$text = parsePDF($string);
-			$text = preg_replace("/[^a-zA-Z0-9]+/", " ", $text);
+			try {
+				$text = parsePDF($string);
+				$text = preg_replace("/[^a-zA-Z0-9]+/", " ", $text);
+			}
+			catch (Exception $e) {
+				//echo "There was a problem reading a paper from ACM. The file returned is invalid. Skipping...<br />";
+				$text = ' ';
+				displayError('There was a problem reading a paper from ACM. The file returned is invalid. Skipping...');
+			}
+			//$text = preg_replace("/[^a-zA-Z0-9]+/", " ", $text);
 			$paperArray[$i]->setText($text);
 			$arrayOfPaperText[$i] = $text;
 		}
@@ -617,6 +467,12 @@ function parseACM($paperArray)
 /* End of ACM Functions */
 
 
+
+function displayError($message) {
+	echo '<script>$( "#errorbox" ).show(); $( "#errorbox" ).append("' . $message . '<br />");</script>';
+}
+
+
 function startProcessor() {
 
 	$processesDone = 0;
@@ -624,31 +480,20 @@ function startProcessor() {
 
 	// setup and display progress bar
 	$p = new ProgressBar();
-	//echo '<div id="progressbar" style="background-color:gray;height:90%;font-family:Verdana;color:white;padding-top: 50px;">';
-	//echo '<div id="logo" style="text-align:center;margin-bottom:50px;">
-	//		<img src="images/paperfloat_sm.png" alt="PaperFloat" />
-	//	</div>';
 	echo '<p style="text-align:center;">Our monkeys are &quot;reading&quot; the papers...</p>';
 	echo '<div style="width:40%;margin:auto;">';
 	$p->render();
 	echo '</div>';
-	//echo '</div>';
 	$_SESSION['progressbar'] = $p;
 
 
-
 	$searchTerm = $_SESSION['searchTerm'];
+	$searchParameter = $_SESSION['searchParameter'];
 
-	if ($_SESSION['searchParameter'] == 'author'){
-		$IEEEPaperArray = searchIEEEAuthor($searchTerm);
-	}
-	else {
-		$IEEEPaperArray = searchIEEEKeyWord($searchTerm);
-	}
-
+	$IEEEPaperArray = searchIEEE($searchTerm, $searchParameter);
 	$arrayOfIEEEResearchPapers = parseIEEE($IEEEPaperArray);
 
-	$ACMPaperArray = getACMBy($searchTerm);
+	$ACMPaperArray = searchACM($searchTerm, $searchParameter);
 	$arrayOfACMResearchPapers = parseACM($ACMPaperArray);
 
 	$arrayOfAllText = array();
