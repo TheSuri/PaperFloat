@@ -58,7 +58,6 @@ function printTable() {
 			$frequency = $paper->getFrequency();
 			$title = $paper->getTitle();
 			$conference = $paper->getConference();
-			$conference = trim($conference);
 			$link = $paper->getLink();
 
 			// separate words in title to create separate links
@@ -75,8 +74,7 @@ function printTable() {
 			foreach ($paper->getAuthors() as $key => $value) {
 				echo "<a href=\"wordcloud.php?searchterm=$value&parameter=author\">$value</a>" . ' / ';
 			}
-			echo "</td><td><a href=\"wordcloud.php?searchterm=$conference&parameter=publication\">$conference</a></td>";
-			echo "<td><a href=\"$link\" target=\"_blank\">PDF</a></td></tr>";
+			echo "</td><td>$conference</td><td><a href=\"$link\">PDF</a></td></tr>";
 		}
 	}
 }
@@ -105,7 +103,7 @@ function printTable() {
 						<th>Freq.</th>
 						<th>Title</th> 
 						<th>Author</th>
-						<th>Conference/Publication</th>
+						<th>Conference</th>
 						<th>Link</th>
 					</tr>
 					<?php 
