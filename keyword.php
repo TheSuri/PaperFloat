@@ -53,11 +53,17 @@ function printTable() {
 	uasort($allPapers, 'cmp');
 	$allPapers = array_unique($allPapers, SORT_REGULAR);
 
+	$papersWithKeyword = array();
+	$rowID = 0;
+
 	foreach ($allPapers as $key => $paper) {
 		if (strcmp($paper->getWord(), $keyword) == 0) {
+			$papersWithKeyword[] = $paper;
+
 			$frequency = $paper->getFrequency();
 			$title = $paper->getTitle();
 			$conference = $paper->getConference();
+			$conference = trim($conference);
 			$link = $paper->getLink();
 
 			// separate words in title to create separate links
@@ -66,7 +72,7 @@ function printTable() {
 			$arrayOfTitleWords = explode(' ', $title);
 
 			// print a row with paper's info
-			echo "<tr><td><input type=\"checkbox\"></td><td>$frequency</td><td>";
+			echo "<tr><td><input type=\"checkbox\" name=\"paper[]\" value=\"$rowID\"></td><td>$frequency</td><td>";
 			foreach ($arrayOfTitleWords as $key => $value) {
 				echo "<a href=\"wordcloud.php?searchterm=$value&parameter=keyword\">$value</a>" . ' ';
 			}
@@ -74,11 +80,15 @@ function printTable() {
 			foreach ($paper->getAuthors() as $key => $value) {
 				echo "<a href=\"wordcloud.php?searchterm=$value&parameter=author\">$value</a>" . ' / ';
 			}
-			echo "</td><td>$conference</td><td><a href=\"$link\">PDF</a></td></tr>";
+			echo "</td><td><a href=\"wordcloud.php?searchterm=$conference&parameter=publication\">$conference</a></td>";
+			echo "<td><a href=\"$link\" target=\"_blank\">PDF</a></td></tr>";
+
+			$rowID++;
 		}
 	}
-}
 
+	$_SESSION['papersWithKeyword'] = $papersWithKeyword;
+}
 
 ?>
 
@@ -97,20 +107,27 @@ function printTable() {
 		<div id="word_content">
 			<h2 id="searchword"><?php echo $_GET['word']; ?></h2>
 			<div id="paperlist">
-				<table>
-					<tr>
-						<th>&nbsp;</th>
-						<th>Freq.</th>
-						<th>Title</th> 
-						<th>Author</th>
-						<th>Conference</th>
-						<th>Link</th>
-					</tr>
-					<?php 
-						// echo table here
-						printTable();
-					?>
-				</table>
+				<form action="wordcloud.php" method="get">
+					<input type="hidden" name="subset" value="true">
+					<table>
+						<tr>
+							<th>&nbsp;</th>
+							<th>Freq.</th>
+							<th>Title</th> 
+							<th>Author</th>
+							<th>Conference/Publication</th>
+							<th>Link</th>
+						</tr>
+						<?php 
+							// echo table here
+							printTable();
+						?>
+					</table>
+					<div>
+						&nbsp;
+					</div>
+					<input id="subsetbutton" class="purplebutton" type="submit" value="Subset Search">
+				</form>
 			</div>
 
 				
