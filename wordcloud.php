@@ -2,6 +2,7 @@
 	// includes
 	include 'processor.php';
 	include 'paper_word.php';
+	include 'subsetsearch.php';
 	//start session
 	session_start();
 
@@ -64,22 +65,43 @@
 			<a href="./"><img src="images/paperfloat_sm.png" alt="PaperFloat" /></a>
 		</div>
 
+		<div id="errorbox" style="padding: 20px; background-color: salmon; width: 50%; margin: auto; margin-top: 20px; margin-bottom: 20px;">
+			Error:
+			<br />
+		</div>
+		<script>
+			$( "#errorbox" ).hide();
+		</script>
+
 		<div id="progressbar" style="padding-top: 50px;">
 			<?php 
 
-				if ($term != $_SESSION['searchTerm'] || $limit != $_SESSION['limit'] || $searchParameter!= $_SESSION['searchParameter']) {
+				
+				try {
 
-					$_SESSION['searchTerm'] = $term;
-					
-					$_SESSION['limit'] = $limit;
+					if ($term != $_SESSION['searchTerm'] || $limit != $_SESSION['limit'] || $searchParameter!= $_SESSION['searchParameter']) {
 
-					$_SESSION['searchParameter'] = $searchParameter;
+						$_SESSION['searchTerm'] = $term;
+						
+						$_SESSION['limit'] = $limit;
 
-					$totalProcesses = $limit*4; // total processes=(paper limit*2)*2  //two papers each source(2), with two processes each paper (download and parse)
-					$_SESSION['totalProcesses'] = $totalProcesses;
+						$_SESSION['searchParameter'] = $searchParameter;
 
-					startProcessor();
+						$totalProcesses = $limit*4; // total processes=(paper limit*2)*2  //two papers each source(2), with two processes each paper (download and parse)
+						$_SESSION['totalProcesses'] = $totalProcesses;
+
+						startProcessor();
+					}
+					else if (isset($_GET['subset'])) {
+						if (strcmp($_GET['subset'], "true") == 0) {
+							subsetSearch();
+						}
+					}
 				}
+				catch (Exception $e) {
+
+				}
+				
 
 			?>
 		</div>
@@ -136,8 +158,8 @@
 		    return  $launch;
 				}
 				
-				function word_cloud($words, $div_size = 600) {
-					$cloud = "<div style=\"width: {$div_size}px\">";
+				function word_cloud($words) {
+					$cloud = "<div>";
 					$fmax = 160; /* Maximum font size */
 					$fmin = 8; /* Minimum font size */
 					$counted = array_count_values($words);
@@ -187,7 +209,18 @@
 
 				$wordsArray = array();
 
-				$paperArray = $_SESSION['AllPaperArray'];
+				if (isset($_GET['subset'])) {
+					if (strcmp($_GET['subset'], "true") == 0) {
+						$paperArray = $_SESSION['subsetPapersArray'];
+						echo 'Subset cloud';
+					}
+					else {
+						$paperArray = $_SESSION['AllPaperArray'];
+					}
+				}
+				else {
+					$paperArray = $_SESSION['AllPaperArray'];
+				}
 
 				$arrayOfWords = array();
 				for ($i = 0; $i < count($paperArray); $i++)
@@ -238,7 +271,7 @@
 				$filtered_complete = filter_stopwords($arrayOfWords, $stopwords);
 				$filtered = filter_stopwords_simple($wordsArray, $stopwords);
 				
-				echo word_cloud($filtered, 600);
+				echo word_cloud($filtered);
 
 				$counted = array_count_values($filtered);
 				
@@ -284,7 +317,7 @@
 				<input type="radio" name="parameter" value="author">Author 
 				<br />
 				<br />
-				Limit search to <input id="searchlimit" type="number" name="limit" value="10"> articles
+				Limit search to <input id="searchlimit" type="number" name="limit" value="5"> articles per source
 				<br />
 				<div class="floatright">
 					<!-- <div class="fb-share-button sharebutton" data-layout="button"></div> -->
